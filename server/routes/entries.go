@@ -6,11 +6,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/arshsuri96/go-react-calorie/models"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/mgo.v2/bson"
 )
+
+var validate = validator.New()
 
 var entryCollection *mongo.Collection = OpenCollection(Client, "calories")
 
@@ -45,7 +49,6 @@ func AddEntry(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 
 }
-
 
 func GetEntries(c *gin.Context) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
@@ -91,6 +94,24 @@ func EntryById(c *gin.Context) {
 }
 
 func GetEntriesByIngredient(c *gin.Context) {
+	ingredient := c.Params.ByName("id")
+	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
+	var entries []bson.M
+	cursor, err := entryCollection.Find(ctx, bson.M{"ingredients": ingredient})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		fmt.Println(err)
+		return
+	}
+
+	if err := cursor.All(ctx, &entries); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		fmt.Println(err)
+		return
+	}
+	defer cancel()
+	c.JSON(http.StatusOK, entries)
 
 }
 
@@ -98,11 +119,8 @@ func UpdateEntry(c *gin.Context) {
 
 	entryID := c.Params.ByName("id")
 	docId, _ := primitive.ObjectIDFromHex(entryID)
-	
-
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	var entry models.Entry
-
 
 	if err := c.BindJSON(&entry); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -117,19 +135,19 @@ func UpdateEntry(c *gin.Context) {
 		return
 	}
 
-	var result ,err = entryCollection.ReplaceOne(
+	result, err := entryCollection.ReplaceOne(
 		ctx,
-		bson.M{"_id", docId},
+		bson.M{"_id": docId},
 		bson.M{
-			"dish" 	: entry.Dish,
-			"fat"	: entry.Fat,
-			"Ingredients"	: entry.Ingredients,
-			"Calories"		: entry.Calories,
-			"protein"		: entry.Protein,
-			"Macros"		: entry.Macros,
+			"dish":        entry.Dish,
+			"fat":         entry.Fat,
+			"Ingredients": entry.Ingredients,
+			"Calories":    entry.Calories,
+			"protein":     entry.Protein,
+			"Macros":      entry.Macros,
 		},
 	)
-	if err!= nil {
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		fmt.Println(err)
 		return
@@ -142,16 +160,15 @@ func UpdateEntry(c *gin.Context) {
 func UpdateIngredient(c *gin.Context) {
 
 	entryID := c.Params.ByName("id")
-	docId, _ := primitive.ObjectIDFromHex(entryID)
+	docID, _ := primitive.ObjectIDFromHex(entryID)
 
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
 	type Ingredient struct {
-		Ingredients *string 'json:"ingredients"'
+		Ingredients *string `json: "ingredients"`
 	}
 
-	var ingredient Ingredient 
-
+	var ingredient Ingredient
 
 	if err := c.BindJSON(&ingredient); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -159,8 +176,8 @@ func UpdateIngredient(c *gin.Context) {
 		return
 	}
 
-	result, err := entryCollection.UpdateOne(cxt, bson.M{"_id":docID},
-	bson.D{{"$set", bson.D{{"ingredients", Ingredient.Ingredients}}}}
+	result, err := entryCollection.UpdateOne(ctx, bson.M{"_id": docID},
+		bson.D{{"$set", bson.D{{"ingredients", ingredient.Ingredients}}}},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -179,7 +196,7 @@ func DeleteEntry(c *gin.Context) {
 
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
-	result, err := entryCollection.DeleteOne(ctx, bson.M{"_id": docID})
+	result, err := entryCollection.DeleteOne(ctx, bson.M{"_id": docId})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
