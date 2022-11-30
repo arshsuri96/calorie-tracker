@@ -58,7 +58,7 @@ const Entries = () => {
             </Modal.Body>
             </Modal>
 
-            <Modal show={changeIngredient.change} onHide={() => setChangeIngredient({"change": false, "id": 0})} centered></Modal>
+            <Modal show={changeIngredient.change} onHide={() => setChangeIngredient({"change": false, "id": 0})} centered>
             <Modal.Header closeButton>
                 <Modal.Title>Change Ingredients</Modal.Title>
             </Modal.Header>
@@ -70,6 +70,7 @@ const Entries = () => {
                 <Button onClick={() => changeIngredientForEntry()}>Change</Button>
                 <Button onClick={()=> setChangeIngredient({"change": false, "id":0})}>Cancel</Button>
             </Modal.Body>
+            </Modal>
 
             <Modal show={changeEntry.change} onHide={() => setChangeEntry({"change": false, "id": 0})} centered></Modal>
             <Modal.Header closeButton>
